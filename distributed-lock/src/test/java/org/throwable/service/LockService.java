@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.throwable.lock.annotation.DistributedLock;
 import org.throwable.lock.common.LockPolicyEnum;
+import org.throwable.lock.entity.User;
 
 /**
  * @author throwable
@@ -23,5 +24,15 @@ public class LockService {
 			e.printStackTrace();
 		}
 		log.warn("process account :" + account);
+	}
+
+	@DistributedLock(policy = LockPolicyEnum.ZOOKEEPER, target = User.class, keyName = "account", waitSeconds = 11)
+	public void processTarget(User user){
+		try {
+			Thread.sleep(1000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		log.warn("process user :" + user.toString());
 	}
 }

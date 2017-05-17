@@ -13,6 +13,7 @@ import java.lang.annotation.*;
 @Documented
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
+@Repeatable(DistributedLocks.class)
 public @interface DistributedLock {
 
     LockPolicyEnum policy();
@@ -22,4 +23,5 @@ public @interface DistributedLock {
     String keyName();
 
     long waitSeconds() default -1;
+
 }
