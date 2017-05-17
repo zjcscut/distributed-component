@@ -8,6 +8,9 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.throwable.Application;
 import org.throwable.lock.annotation.EnableDistributedLock;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 /**
@@ -21,13 +24,24 @@ import static org.junit.Assert.*;
 @EnableDistributedLock
 public class LockServiceTest {
 
-    @Autowired
-    private LockService lockService;
+	@Autowired
+	private LockService lockService;
 
-    @Test
-    public void process() throws Exception {
-        
-        lockService.process("zjc");
-    }
+	@Test
+	public void process() throws Exception {
+		List<Thread> threads = new ArrayList<>();
+		for (int i = 0; i < 10; i++) {
+			final int j = i;
+			threads.add(new Thread(new Runnable() {
+				@Override
+				public void run() {
+					lockService.process("account-" + j);
+				}
+			}));
+		}
+		threads.forEach(Thread::start);
+
+		Thread.sleep(Integer.MAX_VALUE);
+	}
 
 }

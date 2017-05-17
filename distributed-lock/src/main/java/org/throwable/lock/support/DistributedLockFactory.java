@@ -6,6 +6,9 @@ package org.throwable.lock.support;
  * @function
  * @since 2017/5/17 17:28
  */
-
 public interface DistributedLockFactory {
+
+	 DistributedLock createDistributedLockByPath( String lockPath);
+
+
 }

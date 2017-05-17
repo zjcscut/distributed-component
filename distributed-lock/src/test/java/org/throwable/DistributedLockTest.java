@@ -1,11 +1,10 @@
 package org.throwable;
 
-import org.apache.curator.framework.recipes.locks.InterProcessMutex;
-import org.apache.curator.framework.recipes.locks.InterProcessReadWriteLock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.throwable.lock.annotation.EnableDistributedLock;
 
 /**
  * @author throwable
@@ -15,11 +14,13 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = Application.class)
+@EnableDistributedLock
 public class DistributedLockTest {
 
+
+	@Test
     public void testCurator()throws Exception{
-        InterProcessMutex mutex = new InterProcessMutex(null,null);
-        InterProcessReadWriteLock writeLock = new InterProcessReadWriteLock(null,null);
+
     }
 
 

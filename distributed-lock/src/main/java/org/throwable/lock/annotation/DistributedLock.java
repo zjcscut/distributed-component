@@ -20,4 +20,6 @@ public @interface DistributedLock {
     Class<?> target() default String.class;
 
     String keyName();
+
+    long waitSeconds() default -1;
 }
