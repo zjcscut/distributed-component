@@ -1,0 +1,7 @@
+zookeeperClientProperties:
+        connectString: 127.0.0.1:2184
+        sessionTimeoutMs: 5000
+        connectionTimeoutMs: 300000
+        baseSleepTimeMs: 5000
+        maxRetries: 3
+        baseLockPath: /zk/lock

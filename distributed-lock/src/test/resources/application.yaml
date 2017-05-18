@@ -1,0 +1,3 @@
+distrubited:
+    lock:
+      zookeeperConfigurationLocation: zookeeper.yaml

@@ -27,6 +27,7 @@ import org.throwable.utils.ArrayUtils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -163,7 +164,8 @@ public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegis
      * 分布式锁链释放,注意解锁必须反序
      */
     private void processDistributedLockChainRelease(List<DistributedLockInvocation> distributedLockInvocations) {
-        distributedLockInvocations.stream().unordered().forEach(DistributedLockInvocation::release);
+        Collections.reverse(distributedLockInvocations);
+        distributedLockInvocations.forEach(DistributedLockInvocation::release);
     }
 
     private DefaultListableBeanFactory wrapBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
@@ -207,8 +209,7 @@ public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegis
             try {
                 this.distributedLock.release();
             } catch (Exception e) {
-                log.error(String.format("execute distributedLock invocation #release failed,lockPath:%s", lockPath), e);
-                throw new LockException("execute distributedLock invocation #release failed,lockPath:" + lockPath);
+                log.warn(String.format("execute distributedLock invocation #release failed,lockPath:%s", lockPath), e);
             }
         }
 

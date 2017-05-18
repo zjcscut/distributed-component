@@ -24,7 +24,6 @@ public class DistributedLockTargetKeyMatcher {
 
     private PropertyDescriptor[] initDescriptorByType(Class<?> clazz) {
         PropertyDescriptor[] propertyDescriptors = descriptors.get(clazz);
-
         if (null != propertyDescriptors) {
             return propertyDescriptors;
         } else {

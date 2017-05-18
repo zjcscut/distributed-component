@@ -17,19 +17,27 @@ import java.util.Map;
 @Component
 public class DistributedLockContext {
 
-	@Autowired
-	private ApplicationContext applicationContext;
+    @Autowired
+    private ApplicationContext applicationContext;
 
-	private static final Map<LockPolicyEnum, Class<? extends DistributedLockFactory>> repository =
-			new EnumMap<>(LockPolicyEnum.class);
+    private static final Map<LockPolicyEnum, Class<? extends DistributedLockFactory>> repository =
+            new EnumMap<>(LockPolicyEnum.class);
 
-	static {
-		repository.put(LockPolicyEnum.ZOOKEEPER, ZookeeperDistributedLockFactory.class);
-		repository.put(LockPolicyEnum.REDIS, RedisDistributedLockFactory.class);
-	}
+    static {
+        repository.put(LockPolicyEnum.ZOOKEEPER, ZookeeperDistributedLockFactory.class);
+        repository.put(LockPolicyEnum.REDIS, RedisDistributedLockFactory.class);
+    }
 
-	public DistributedLock getLockByPolicyAndPath(LockPolicyEnum policy, String path) {
-		return applicationContext.getBean(repository.get(policy))
-				.createDistributedLockByPath(path);
-	}
+    public DistributedLock getLockByPolicyAndPath(LockPolicyEnum policy, String path) {
+        return applicationContext.getBean(repository.get(policy))
+                .createDistributedLockByPath(path);
+    }
+
+    public DistributedLock getRedisLockByPath(String path) {
+        return getLockByPolicyAndPath(LockPolicyEnum.REDIS, path);
+    }
+
+    public DistributedLock getZookeeperLockByPath(String path) {
+        return getLockByPolicyAndPath(LockPolicyEnum.ZOOKEEPER, path);
+    }
 }

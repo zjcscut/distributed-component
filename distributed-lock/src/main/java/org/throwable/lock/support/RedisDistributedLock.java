@@ -1,5 +1,7 @@
 package org.throwable.lock.support;
 
+import org.redisson.api.RLock;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -10,33 +12,39 @@ import java.util.concurrent.TimeUnit;
  */
 public class RedisDistributedLock implements DistributedLock {
 
-	@Override
-	public void lock() throws Exception {
+    private RLock rLock;
 
-	}
+    public RedisDistributedLock(RLock rLock) {
+        this.rLock = rLock;
+    }
 
-	@Override
-	public boolean tryLock(long time, TimeUnit unit) throws Exception {
-		return false;
-	}
+    @Override
+    public void lock() throws Exception {
+        rLock.lock();
+    }
 
-	@Override
-	public void release() throws Exception {
+    @Override
+    public boolean tryLock(long time, TimeUnit unit) throws Exception {
+        return rLock.tryLock(time, unit);
+    }
 
-	}
+    @Override
+    public void release() throws Exception {
+        rLock.unlock();
+    }
 
-	@Override
-	public boolean isLocked() {
-		return false;
-	}
+    @Override
+    public boolean isLocked() {
+        return rLock.isLocked();
+    }
 
-	@Override
-	public boolean isHeldByCurrentThread() {
-		return false;
-	}
+    @Override
+    public boolean isHeldByCurrentThread() {
+        return rLock.isHeldByCurrentThread();
+    }
 
-	@Override
-	public void forceUnlock() {
-
-	}
+    @Override
+    public void forceUnlock() {
+        rLock.forceUnlock();
+    }
 }
