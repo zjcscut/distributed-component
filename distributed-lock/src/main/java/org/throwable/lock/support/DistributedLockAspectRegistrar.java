@@ -1,5 +1,7 @@
 package org.throwable.lock.support;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -17,12 +19,14 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 import org.throwable.lock.annotation.DistributedLock;
+import org.throwable.lock.annotation.DistributedLocks;
 import org.throwable.lock.common.LockPolicyEnum;
 import org.throwable.lock.exception.LockException;
 import org.throwable.lock.exception.UnMatchedLockKeyException;
 import org.throwable.utils.ArrayUtils;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -35,113 +39,183 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegistrar {
 
-	private final DistributedLockTargetKeyMatcher keyMatcher = new DistributedLockTargetKeyMatcher();
+    private final DistributedLockTargetKeyMatcher keyMatcher = new DistributedLockTargetKeyMatcher();
 
-	@Override
-	public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
-										BeanDefinitionRegistry registry) {
-		Advice advice = (MethodInterceptor) invocation -> {
-			Method invocationMethod = invocation.getMethod();
-			ProxyMethodInvocation pmi = (ProxyMethodInvocation) invocation;
-			ProceedingJoinPoint pjp = new MethodInvocationProceedingJoinPoint(pmi);
-			Signature signature = pjp.getSignature();
-			MethodSignature methodSignature = (MethodSignature) signature;
-			if (invocationMethod.isAnnotationPresent(DistributedLock.class)) {
-				//FIXME 考虑重入锁的情况,多个注解同时使用
-				DistributedLock[] lockAnnotations = invocationMethod.getDeclaredAnnotationsByType(DistributedLock.class);
-				return processDistributedLockMethodInterceptor(lockAnnotations, invocation, methodSignature, registry);
-			} else {
-				return invocation.proceed();
-			}
-		};
-		BeanDefinition aspectJBean = BeanDefinitionBuilder.genericBeanDefinition(AspectJExpressionPointcutAdvisor.class)
-				//定义输出路径,一般是日志的输出类,方便排查问题
-				.addPropertyValue("location", "$$distributedLockAspect##")
-				//定义AspectJ切点表达式
-				.addPropertyValue("expression", "@annotation(org.throwable.lock.annotation.DistributedLock)")
-				//定义织入的增强对象,就是上面的自定义的around类型的advice的实现
-				.addPropertyValue("advice", advice)
-				.getBeanDefinition();
-		registry.registerBeanDefinition("distributedLockAspect", aspectJBean);
-	}
+    @Override
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
+                                        BeanDefinitionRegistry registry) {
+        Advice advice = (MethodInterceptor) invocation -> {
+            Method invocationMethod = invocation.getMethod();
+            ProxyMethodInvocation pmi = (ProxyMethodInvocation) invocation;
+            ProceedingJoinPoint pjp = new MethodInvocationProceedingJoinPoint(pmi);
+            Signature signature = pjp.getSignature();
+            MethodSignature methodSignature = (MethodSignature) signature;
+            if (invocationMethod.isAnnotationPresent(DistributedLocks.class)) {
+                DistributedLocks distributedLocks = invocationMethod.getAnnotation(DistributedLocks.class);
+                return processDistributedLockMethodInterceptor(distributedLocks.value(), invocation, methodSignature, registry);
+            } else if (invocationMethod.isAnnotationPresent(DistributedLock.class)) {
+                DistributedLock distributedLock = invocationMethod.getAnnotation(DistributedLock.class);
+                return processDistributedLockMethodInterceptor(new DistributedLock[]{distributedLock}, invocation, methodSignature, registry);
+            } else {
+                return invocation.proceed();
+            }
+        };
+        BeanDefinition aspectJBean = BeanDefinitionBuilder.genericBeanDefinition(AspectJExpressionPointcutAdvisor.class)
+                .addPropertyValue("location", "$$distributedLockAspect##")
+                .addPropertyValue("expression", "@annotation(org.throwable.lock.annotation.DistributedLock) || @annotation(org.throwable.lock.annotation.DistributedLocks)")
+                .addPropertyValue("advice", advice)
+                .getBeanDefinition();
+        registry.registerBeanDefinition("distributedLockAspect", aspectJBean);
+    }
 
-	private Object processDistributedLockMethodInterceptor(DistributedLock[] lockAnnotations,
-														   MethodInvocation methodInvocation,
-														   MethodSignature methodSignature,
-														   BeanDefinitionRegistry registry) {
-		Class<?> target = lockAnnotations[0].target();
-		String keyName = lockAnnotations[0].keyName();
-		LockPolicyEnum policy = lockAnnotations[0].policy();
-		long waitSeconds = lockAnnotations[0].waitSeconds();
-		String[] parameterNames = methodSignature.getParameterNames();
-		if (null == parameterNames || parameterNames.length == 0) {
-			throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Method parameters array's length is zero");
-		}
-		if (target.isAssignableFrom(String.class)) {
-			List<String> parameters = ArrayUtils.arrayToList(parameterNames);
-			if (parameters.contains(keyName)) {
-				//FIXME 考虑重入锁的情况,多个注解同时使用
-				return processDistributedLockWithStringTarget(policy, keyName, waitSeconds, methodInvocation, registry);
-			}
-			throw new LockException("@DistributedLock must be matched to parameter key!!!!Lock keyName must be match to a parameter name,keyName: " + keyName);
-		} else {
-			//FIXME 考虑重入锁的情况,多个注解同时使用
-			return processDistributedLockWithClassTarget(target, policy, keyName, waitSeconds, methodInvocation, registry);
-		}
-	}
+    private Object processDistributedLockMethodInterceptor(DistributedLock[] lockAnnotations,
+                                                           MethodInvocation methodInvocation,
+                                                           MethodSignature methodSignature,
+                                                           BeanDefinitionRegistry registry) {
+        String[] parameterNames = methodSignature.getParameterNames();
+        if (null == parameterNames || parameterNames.length == 0) {
+            throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Method parameters array's length is zero");
+        }
+        DistributedLockContext context = wrapBeanDefinitionRegistry(registry).getBean(DistributedLockContext.class);
+        List<DistributedLockInvocation> distributedLockInvocations = new ArrayList<>();
+        for (DistributedLock lockAnnotation : lockAnnotations) {
+            Class<?> target = lockAnnotation.target();
+            String keyName = lockAnnotation.keyName();
+            LockPolicyEnum policy = lockAnnotation.policy();
+            long waitSeconds = lockAnnotation.waitSeconds();
+            if (target.isAssignableFrom(String.class)) {
+                boolean match = false;
+                for (int i = 0; i < parameterNames.length; i++) {
+                    String parameterName = parameterNames[i];
+                    if (parameterName.contains(keyName)) {
+                        match = true;
+                        String targetValue = methodInvocation.getArguments()[i].toString();
+                        distributedLockInvocations.add(buildDistributedLockInvocation(policy, targetValue, waitSeconds, context));
+                        break;
+                    }
+                }
+                if (!match) {
+                    throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Lock keyName must be match to a parameter name,keyName: " + keyName);
+                }
+            } else {
+                distributedLockInvocations.add(buildDistributedLockInvocationWithClassTarget(target, policy, keyName, waitSeconds, methodInvocation, context));
+            }
+        }
 
-	private Object processDistributedLockWithStringTarget(LockPolicyEnum policy,
-														  String lockPath,
-														  long waitSeconds,
-														  MethodInvocation methodInvocation,
-														  BeanDefinitionRegistry registry) {
-		org.throwable.lock.support.DistributedLock distributedLock
-				= wrapBeanDefinitionRegistry(registry)
-				.getBean(DistributedLockContext.class)
-				.getLockByPolicyAndPath(policy, lockPath);
-		try {
-			if (!distributedLock.isHeldByCurrentThread()
-					&& distributedLock.tryLock(waitSeconds, TimeUnit.SECONDS)) {
-				return methodInvocation.proceed();
-			}
-		} catch (Throwable e) {
-			throw new LockException("distributedLock execute #tryLock failed for timeout,lockPath: " + lockPath);
-		} finally {
-			try {
-				distributedLock.release();
-			} catch (Exception e) {
-				//ignore
-				log.warn("distributedLock execute #release failed!!!LockPath: " + lockPath);
-			}
-		}
-		throw new LockException("distributedLock acquire lock failed for timeout,lockPath: " + lockPath);
-	}
+        try {
+            if (processDistributedLockChainAquire(distributedLockInvocations)) {
+                return methodInvocation.proceed();
+            }
+        } catch (Throwable e) {
+            log.error("processDistributedLockChainAquire execute failed for timeout:", e);
+            throw new LockException(String.format("distributedLock execute #tryLock failed for timeout,message:%s", e.getMessage()));
+        } finally {
+            try {
+                processDistributedLockChainRelease(distributedLockInvocations);
+            } catch (Exception e) {
+                //ignore
+                log.warn("processDistributedLockChainRelease execute failed!!!", e);
+            }
+        }
+        throw new LockException("distributedLock chain acquire lock failed for timeout");
+    }
 
-	private Object processDistributedLockWithClassTarget(Class<?> target,
-														 LockPolicyEnum policy,
-														 String lockPath,
-														 long waitSeconds,
-														 MethodInvocation methodInvocation,
-														 BeanDefinitionRegistry registry) {
-		Object[] parameters = methodInvocation.getArguments();
-		if (null == parameters || parameters.length == 0) {
-			throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Method parameters array's length is zero");
-		}
-		Object targetParam = null;
-		for (Object parameter : parameters) {
-			if (parameter.getClass().isAssignableFrom(target)) {
-				targetParam = parameter;
-				break;
-			}
-		}
-		if (null == targetParam) {
-			throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Target type must be matched to parameter type!!");
-		}
-		String targetKey = keyMatcher.matchAndReturnLockKeyByTargetObjectAndKeyName(targetParam, lockPath);
-		return processDistributedLockWithStringTarget(policy, targetKey, waitSeconds, methodInvocation, registry);
-	}
+    private DistributedLockInvocation buildDistributedLockInvocation(LockPolicyEnum policy,
+                                                                     String lockPath,
+                                                                     long waitSeconds,
+                                                                     DistributedLockContext context) {
+        return new DistributedLockInvocation(policy, lockPath, waitSeconds, context);
+    }
 
-	private DefaultListableBeanFactory wrapBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
-		return (DefaultListableBeanFactory) registry;
-	}
+    private DistributedLockInvocation buildDistributedLockInvocationWithClassTarget(Class<?> target,
+                                                                                    LockPolicyEnum policy,
+                                                                                    String lockPath,
+                                                                                    long waitSeconds,
+                                                                                    MethodInvocation methodInvocation,
+                                                                                    DistributedLockContext context) {
+        Object[] parameters = methodInvocation.getArguments();
+        if (null == parameters || 0 == parameters.length) {
+            throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Method parameters array's length is zero");
+        }
+        Object targetParam = null;
+        for (Object parameter : parameters) {
+            if (parameter.getClass().isAssignableFrom(target)) {
+                targetParam = parameter;
+                break;
+            }
+        }
+        if (null == targetParam) {
+            throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Target type must be matched to parameter type!!");
+        }
+        String targetKey = keyMatcher.matchAndReturnLockKeyByTargetObjectAndKeyName(targetParam, lockPath);
+        return buildDistributedLockInvocation(policy, targetKey, waitSeconds, context);
+    }
+
+    /**
+     * 分布式锁链加锁
+     */
+    private boolean processDistributedLockChainAquire(List<DistributedLockInvocation> distributedLockInvocations) {
+        return distributedLockInvocations.stream().allMatch(distributedLockInvocation ->
+                !distributedLockInvocation.isHeldByCurrentThread() && distributedLockInvocation.tryLock());
+    }
+
+    /**
+     * 分布式锁链释放,注意解锁必须反序
+     */
+    private void processDistributedLockChainRelease(List<DistributedLockInvocation> distributedLockInvocations) {
+        distributedLockInvocations.stream().unordered().forEach(DistributedLockInvocation::release);
+    }
+
+    private DefaultListableBeanFactory wrapBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+        return (DefaultListableBeanFactory) registry;
+    }
+
+    @NoArgsConstructor
+    private static class DistributedLockInvocation {
+
+        @Getter
+        private LockPolicyEnum lockPolicy;
+        @Getter
+        private String lockPath;
+        @Getter
+        private long waitSeconds;
+
+        private DistributedLockContext context;
+
+        @Getter
+        private org.throwable.lock.support.DistributedLock distributedLock;
+
+        public DistributedLockInvocation(LockPolicyEnum lockPolicy, String lockPath,
+                                         long waitSeconds, DistributedLockContext context) {
+            this.lockPolicy = lockPolicy;
+            this.lockPath = lockPath;
+            this.waitSeconds = waitSeconds;
+            this.context = context;
+            this.distributedLock = this.context.getLockByPolicyAndPath(lockPolicy, lockPath);
+        }
+
+        public boolean tryLock() {
+            try {
+                return distributedLock.tryLock(waitSeconds, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.error(String.format("execute distributedLock invocation #tryLock failed,lockPath:%s", lockPath), e);
+                throw new LockException("execute distributedLock invocation #tryLock failed,lockPath:" + lockPath);
+            }
+        }
+
+        public void release() {
+            try {
+                this.distributedLock.release();
+            } catch (Exception e) {
+                log.error(String.format("execute distributedLock invocation #release failed,lockPath:%s", lockPath), e);
+                throw new LockException("execute distributedLock invocation #release failed,lockPath:" + lockPath);
+            }
+        }
+
+        public boolean isHeldByCurrentThread() {
+            return distributedLock.isHeldByCurrentThread();
+        }
+    }
+
+
 }

@@ -25,45 +25,67 @@ import static org.junit.Assert.*;
 @EnableDistributedLock
 public class LockServiceTest {
 
-	@Autowired
-	private LockService lockService;
+    @Autowired
+    private LockService lockService;
 
-	@Test
-	public void process() throws Exception {
-		List<Thread> threads = new ArrayList<>();
-		for (int i = 0; i < 10; i++) {
-			final int j = i;
-			threads.add(new Thread(new Runnable() {
-				@Override
-				public void run() {
-					lockService.process("account-" + j);
-				}
-			}));
-		}
-		threads.forEach(Thread::start);
+    @Test
+    public void process() throws Exception {
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            final int j = i;
+            threads.add(new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    lockService.process("account-" + j);
+                }
+            }));
+        }
+        threads.forEach(Thread::start);
 
-		Thread.sleep(Integer.MAX_VALUE);
-	}
+        Thread.sleep(Integer.MAX_VALUE);
+    }
 
-	@Test
-	public void processTarget() throws Exception {
-		final User user = new User();
-		user.setId(10086L);
-		user.setAge(24);
-		user.setName("zjcscut");
-		user.setAccount("zjcscut-10086");
-		List<Thread> threads = new ArrayList<>();
-		for (int i = 0; i < 10; i++) {
-			threads.add(new Thread(new Runnable() {
-				@Override
-				public void run() {
-					lockService.processTarget(user);
-				}
-			}));
-		}
-		threads.forEach(Thread::start);
+    @Test
+    public void processTarget() throws Exception {
+        final User user = new User();
+        user.setId(10086L);
+        user.setAge(24);
+        user.setName("zjcscut");
+        user.setAccount("zjcscut-10086");
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            threads.add(new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    lockService.processTarget(user);
+                }
+            }));
+        }
+        threads.forEach(Thread::start);
 
-		Thread.sleep(Integer.MAX_VALUE);
-	}
+        Thread.sleep(Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void reentrantLockProcessTarget() throws Exception {
+        final User user = new User();
+        final String name = "zjcscut";
+        user.setId(10086L);
+        user.setAge(24);
+        user.setName(name);
+        user.setAccount("zjcscut-10086");
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            threads.add(new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    lockService.reentrantLockProcessTarget(user, name);
+                }
+            }));
+        }
+        threads.forEach(Thread::start);
+
+        Thread.sleep(Integer.MAX_VALUE);
+    }
 
 }

@@ -5,6 +5,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.test.TestingServer;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
  * @since 2017/5/17 23:00
  */
 @Component
-public class ZookeeperDistributedLockFactory implements DistributedLockFactory,InitializingBean{
+public class ZookeeperDistributedLockFactory implements DistributedLockFactory,InitializingBean,DisposableBean{
 
 	private RetryPolicy retryPolicy = new ExponentialBackoffRetry(5000, 3);
 
@@ -34,6 +35,13 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory,I
 					retryPolicy);
 		}
 		client.start();
+	}
+
+	@Override
+	public void destroy() throws Exception {
+		if (null != client){
+			client.close();
+		}
 	}
 
 	@Override
