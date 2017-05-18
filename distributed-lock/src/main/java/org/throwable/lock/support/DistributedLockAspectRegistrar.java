@@ -23,7 +23,7 @@ import org.throwable.lock.annotation.DistributedLocks;
 import org.throwable.lock.common.LockPolicyEnum;
 import org.throwable.lock.exception.LockException;
 import org.throwable.lock.exception.UnMatchedLockKeyException;
-import org.throwable.lock.utils.ArrayUtils;
+import org.throwable.lock.utils.ClassUtils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -84,20 +84,8 @@ public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegis
             String keyName = lockAnnotation.keyName();
             LockPolicyEnum policy = lockAnnotation.policy();
             long waitSeconds = lockAnnotation.waitSeconds();
-            if (target.isAssignableFrom(String.class)) {
-                boolean match = false;
-                for (int i = 0; i < parameterNames.length; i++) {
-                    String parameterName = parameterNames[i];
-                    if (parameterName.contains(keyName)) {
-                        match = true;
-                        String targetValue = methodInvocation.getArguments()[i].toString();
-                        distributedLockInvocations.add(buildDistributedLockInvocation(policy, targetValue, waitSeconds, context));
-                        break;
-                    }
-                }
-                if (!match) {
-                    throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Lock keyName must be match to a parameter name,keyName: " + keyName);
-                }
+            if (ClassUtils.isPrimitive(target)) {
+                processMatchKeyDistributedLockInvocation(parameterNames, keyName, methodInvocation, policy, distributedLockInvocations, waitSeconds, context);
             } else {
                 distributedLockInvocations.add(buildDistributedLockInvocationWithClassTarget(target, policy, keyName, waitSeconds, methodInvocation, context));
             }
@@ -111,14 +99,28 @@ public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegis
             log.error("processDistributedLockChainAquire execute failed for timeout:", e);
             throw new LockException(String.format("distributedLock execute #tryLock failed for timeout,message:%s", e.getMessage()));
         } finally {
-            try {
-                processDistributedLockChainRelease(distributedLockInvocations);
-            } catch (Exception e) {
-                //ignore
-                log.warn("processDistributedLockChainRelease execute failed!!!", e);
-            }
+            processDistributedLockChainRelease(distributedLockInvocations);
         }
         throw new LockException("distributedLock chain acquire lock failed for timeout");
+    }
+
+    private void processMatchKeyDistributedLockInvocation(String[] parameterNames, String keyName,
+                                                          MethodInvocation methodInvocation, LockPolicyEnum policy,
+                                                          List<DistributedLockInvocation> distributedLockInvocations,
+                                                          long waitSeconds, DistributedLockContext context) {
+        boolean match = false;
+        for (int i = 0; i < parameterNames.length; i++) {
+            String parameterName = parameterNames[i];
+            if (parameterName.contains(keyName)) {
+                match = true;
+                String targetValue = String.valueOf(methodInvocation.getArguments()[i]);
+                distributedLockInvocations.add(buildDistributedLockInvocation(policy, targetValue, waitSeconds, context));
+                break;
+            }
+        }
+        if (!match) {
+            throw new UnMatchedLockKeyException("@DistributedLock must be matched to parameter key!!!!Lock keyName must be match to a parameter name,keyName: " + keyName);
+        }
     }
 
     private DistributedLockInvocation buildDistributedLockInvocation(LockPolicyEnum policy,

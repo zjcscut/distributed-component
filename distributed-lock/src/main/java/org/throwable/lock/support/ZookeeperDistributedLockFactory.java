@@ -36,6 +36,10 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory, 
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        initZookeeperClient();
+    }
+
+    private void initZookeeperClient() {
         try {
             ZookeeperClientConfiguration clientConfiguration
                     = YamlParseUtils.parse(distributedLockProperties.getZookeeperConfigurationLocation()
