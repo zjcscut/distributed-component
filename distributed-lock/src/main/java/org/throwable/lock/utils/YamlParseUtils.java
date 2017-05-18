@@ -18,19 +18,23 @@ import java.io.InputStream;
  */
 public final class YamlParseUtils {
 
-    public static <T> T parse(String path, Class<T> clazz) {
-        try {
-            YAMLFactory yamlFactory = new YAMLFactory();
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-            InputStream inputStream = new ClassPathResource(path).getInputStream();
-            YAMLParser yamlParser = yamlFactory.createParser(inputStream);
-            final JsonNode node = mapper.readTree(yamlParser);
-            TreeTraversingParser treeTraversingParser = new TreeTraversingParser(node);
-            return mapper.readValues(treeTraversingParser, clazz).next();
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
+	private static final YAMLFactory yamlFactory = new YAMLFactory();
+	private static ObjectMapper mapper = new ObjectMapper();
+
+	static {
+		mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+	}
+
+	public static <T> T parse(String path, Class<T> clazz) {
+		try {
+			InputStream inputStream = new ClassPathResource(path).getInputStream();
+			YAMLParser yamlParser = yamlFactory.createParser(inputStream);
+			final JsonNode node = mapper.readTree(yamlParser);
+			TreeTraversingParser treeTraversingParser = new TreeTraversingParser(node);
+			return mapper.readValues(treeTraversingParser, clazz).next();
+		} catch (Exception e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
 
 }

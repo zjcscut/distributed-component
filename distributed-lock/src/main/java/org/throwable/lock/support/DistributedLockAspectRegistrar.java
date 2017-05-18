@@ -53,7 +53,7 @@ public class DistributedLockAspectRegistrar implements ImportBeanDefinitionRegis
             MethodSignature methodSignature = (MethodSignature) signature;
             if (invocationMethod.isAnnotationPresent(DistributedLocks.class)) {
                 DistributedLocks distributedLocks = invocationMethod.getAnnotation(DistributedLocks.class);
-                return processDistributedLockMethodInterceptor(distributedLocks.value(), invocation, methodSignature, registry);
+                return processDistributedLockMethodInterceptor(distributedLocks.locks(), invocation, methodSignature, registry);
             } else if (invocationMethod.isAnnotationPresent(DistributedLock.class)) {
                 DistributedLock distributedLock = invocationMethod.getAnnotation(DistributedLock.class);
                 return processDistributedLockMethodInterceptor(new DistributedLock[]{distributedLock}, invocation, methodSignature, registry);

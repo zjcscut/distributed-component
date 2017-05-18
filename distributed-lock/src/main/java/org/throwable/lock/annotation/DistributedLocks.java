@@ -13,5 +13,5 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DistributedLocks {
 
-	DistributedLock[] value();
+	DistributedLock[] locks();
 }

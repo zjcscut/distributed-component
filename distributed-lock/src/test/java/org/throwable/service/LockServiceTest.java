@@ -75,7 +75,7 @@ public class LockServiceTest {
         user.setName(name);
         user.setAccount("zjcscut-10086");
         List<Thread> threads = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 2; i++) {
             threads.add(new Thread(new Runnable() {
                 @Override
                 public void run() {
