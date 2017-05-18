@@ -1,4 +1,4 @@
-package org.throwable.utils;
+package org.throwable.lock.utils;
 
 import java.util.ArrayList;
 import java.util.Collections;

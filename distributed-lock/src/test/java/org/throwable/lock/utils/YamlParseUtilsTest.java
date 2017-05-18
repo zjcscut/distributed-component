@@ -1,8 +1,6 @@
-package org.throwable.utils;
+package org.throwable.lock.utils;
 
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 /**
  * @author throwable

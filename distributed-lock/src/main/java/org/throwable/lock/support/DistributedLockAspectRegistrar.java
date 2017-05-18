@@ -23,7 +23,7 @@ import org.throwable.lock.annotation.DistributedLocks;
 import org.throwable.lock.common.LockPolicyEnum;
 import org.throwable.lock.exception.LockException;
 import org.throwable.lock.exception.UnMatchedLockKeyException;
-import org.throwable.utils.ArrayUtils;
+import org.throwable.lock.utils.ArrayUtils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;

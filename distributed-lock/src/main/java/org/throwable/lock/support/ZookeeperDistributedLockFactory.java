@@ -14,7 +14,8 @@ import org.throwable.lock.configuration.DistributedLockProperties;
 import org.throwable.lock.configuration.ZookeeperClientConfiguration;
 import org.throwable.lock.configuration.ZookeeperClientProperties;
 import org.throwable.lock.exception.LockException;
-import org.throwable.utils.YamlParseUtils;
+import org.throwable.lock.utils.YamlParseUtils;
+
 
 /**
  * @author throwable
@@ -52,8 +53,8 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory, 
                         retryPolicy);
             }
             client.start();
-        }catch (Exception e){
-            log.warn("Initialize zookeeper client failed!!!!Zookeeper client yaml preperties file could not be found.",e);
+        } catch (Exception e) {
+            log.warn("Initialize zookeeper client failed!!!!Zookeeper client yaml preperties file could not be found.");
         }
     }
 
@@ -76,6 +77,11 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory, 
     }
 
     public ZookeeperInterProcessMutex createZookeeperInterProcessMutex(String lockPath) {
+        String targetPath = baseLockPath + "/" + lockPath;
+        return new ZookeeperInterProcessMutex(client, targetPath);
+    }
+
+    public ZookeeperInterProcessMutex createZookeeperInterProcessMutex(String baseLockPath, String lockPath) {
         String targetPath = baseLockPath + "/" + lockPath;
         return new ZookeeperInterProcessMutex(client, targetPath);
     }

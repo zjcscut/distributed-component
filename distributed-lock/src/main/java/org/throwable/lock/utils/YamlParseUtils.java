@@ -1,4 +1,4 @@
-package org.throwable.utils;
+package org.throwable.lock.utils;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;

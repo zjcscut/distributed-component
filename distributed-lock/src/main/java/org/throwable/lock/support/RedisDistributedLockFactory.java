@@ -48,7 +48,7 @@ public class RedisDistributedLockFactory implements DistributedLockFactory, Init
                 client = Redisson.create(config);
             }
         } catch (Exception e) {
-            log.warn("Initialize redisson client failed!!!!Redisson client yaml preperties file could not be found.",e);
+            log.warn("Initialize redisson client failed!!!!Redisson client yaml preperties file could not be found.");
         }
     }
 
