@@ -15,8 +15,7 @@ public class RTLocks {
 	public RTLocks() {
 	}
 
-	@DistributedLock(policy = LockPolicyEnum.ZOOKEEPER, target = String.class, keyName = "account", waitSeconds = 11)
-	@DistributedLock(policy = LockPolicyEnum.ZOOKEEPER, target = User.class, keyName = "account", waitSeconds = 11)
+
 	public void process(){
 
 	}

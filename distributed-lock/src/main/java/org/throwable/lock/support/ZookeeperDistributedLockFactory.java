@@ -5,6 +5,7 @@ import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.test.TestingServer;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory, 
 
     private String baseLockPath;
 
+    private static final String TEST_MODE_SIGN = "TEST_MODE";
+    private static final String TEST_MODE_BASELOCLPATH = "/zk/lock";
+
     @Autowired
     private DistributedLockProperties distributedLockProperties;
 
@@ -41,25 +45,46 @@ public class ZookeeperDistributedLockFactory implements DistributedLockFactory, 
 
     private void initZookeeperClient() {
         try {
-            ZookeeperClientConfiguration clientConfiguration
-                    = YamlParseUtils.parse(distributedLockProperties.getZookeeperConfigurationLocation()
-                    , ZookeeperClientConfiguration.class);
-            ZookeeperClientProperties clientProperties = clientConfiguration.getZookeeperClientProperties();
-            Assert.notNull(clientProperties, "Zookeeper client properties must not be null!!!");
-            this.baseLockPath = clientProperties.getBaseLockPath();
-            Assert.hasText(baseLockPath, "distributed lock baseLockPath must not be blank!!!");
-            RetryPolicy retryPolicy = new ExponentialBackoffRetry(clientProperties.getBaseSleepTimeMs(), clientProperties.getMaxRetries());
-            if (null == client) {
-                client = CuratorFrameworkFactory.newClient(
-                        clientProperties.getConnectString(),
-                        clientProperties.getSessionTimeoutMs(),
-                        clientProperties.getConnectionTimeoutMs(),
-                        retryPolicy);
+            String location = distributedLockProperties.getZookeeperConfigurationLocation();
+            Assert.hasText(location, "distributed lock location must not be blank!!!");
+            if (TEST_MODE_SIGN.equals(location)) {
+                initTestClient();
+            } else {
+                initRealClient(location);
             }
-            client.start();
         } catch (Exception e) {
             log.warn("Initialize zookeeper client failed!!!!Zookeeper client yaml preperties file could not be found.");
         }
+    }
+
+    private void initRealClient(String location) {
+        ZookeeperClientConfiguration clientConfiguration
+                = YamlParseUtils.parse(location, ZookeeperClientConfiguration.class);
+        ZookeeperClientProperties clientProperties = clientConfiguration.getZookeeperClientProperties();
+        Assert.notNull(clientProperties, "Zookeeper client properties must not be null!!!");
+        this.baseLockPath = clientProperties.getBaseLockPath();
+        Assert.hasText(baseLockPath, "distributed lock baseLockPath must not be blank!!!");
+        RetryPolicy retryPolicy = new ExponentialBackoffRetry(clientProperties.getBaseSleepTimeMs(), clientProperties.getMaxRetries());
+        if (null == client) {
+            client = CuratorFrameworkFactory.newClient(
+                    clientProperties.getConnectString(),
+                    clientProperties.getSessionTimeoutMs(),
+                    clientProperties.getConnectionTimeoutMs(),
+                    retryPolicy);
+        }
+        client.start();
+    }
+
+    private void initTestClient() throws Exception {
+        TestingServer server = new TestingServer();
+        this.baseLockPath = TEST_MODE_BASELOCLPATH;
+        RetryPolicy retryPolicy = new ExponentialBackoffRetry(5000, 3);
+        client = CuratorFrameworkFactory.newClient(
+                server.getConnectString(),
+                60000,
+                15000,
+                retryPolicy);
+        client.start();
     }
 
     @Override
